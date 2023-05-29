@@ -40,10 +40,13 @@ for line in transactions_and_elements_list:
 
 
 df_elements = np.array(elements_data)
+sorted_indices = np.argsort(df_elements[:, 0].astype(int))
+df_elements = df_elements[sorted_indices]
 transactions_list = transactions_and_elements_list[last_index+1:]
 
+for i in range(len(transactions_list)):
+    transactions_list[i] = transactions_list[i].replace('\r', '')
 
-# Tworzenie słownika z numerami elementów jako klucze
 element_numbers = {row[0]: row[1] for row in df_elements}
 
 transactions_data = []
@@ -52,20 +55,11 @@ for line in transactions_list:
     transaction_data = np.array([1 if element in transaction else 0 for element in element_numbers])
     transactions_data.append(transaction_data)
 
-# Tworzenie ramki danych dla transakcji
 df_transactions = pd.DataFrame(transactions_data, columns=list(element_numbers.keys()))
 
-# # Wyświetlanie wyników
 print("Elements descriptions:")
 print(df_elements)
-# print("\n\nTransactions:")
-# print(df_transactions)
-#
-# df_transactions.to_csv('ramka_danych.csv', index=False)
+print("\n\nTransactions:")
+print(df_transactions)
 
-# indices_row_2 = [i for i, val in enumerate(df_transactions.iloc[1].values) if val == 1]
-# assert indices_row_2 == expected_indices_row_2, "Indeksy z wartością 1 dla drugiego wiersza nie są zgodne z oczekiwaniami."
-# for idx in indices_row_2:
-#     column_name = df_transactions.columns[idx]
-#     expected_column_name = element_numbers[str(column_name)]
-#     assert column_name == expected_column_name, "Nazwa kolumny dla drugiego wiersza nie jest zgodna z oczekiwaniami."
+df_transactions.to_csv('transactions.csv', index=False)
