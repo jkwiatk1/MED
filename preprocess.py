@@ -15,7 +15,8 @@ response_taxonomy = requests.get(url_taxonomy)
 taxonomy_txt = response_taxonomy.text
 
 df_taxonomy = np.genfromtxt(io.StringIO(taxonomy_txt), delimiter=',')
-
+df_taxonomy = pd.DataFrame(df_taxonomy)
+df_taxonomy.to_csv('taxonomy.csv', index=False)
 
 elements_data = []
 skip_first_line = True
@@ -57,7 +58,9 @@ for line in transactions_list:
 
 df_transactions = pd.DataFrame(transactions_data, columns=list(element_numbers.keys()))
 
-print("Elements descriptions:")
+print("Taxonomy:")
+print(df_taxonomy)
+print("\n\nElements descriptions:")
 print(df_elements)
 print("\n\nTransactions:")
 print(df_transactions)
