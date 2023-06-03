@@ -31,8 +31,41 @@ df_taxonomy = create_taxonomy_dataframe(df_taxonomy_basic)
 print(df_taxonomy)
 print(df_transactions)
 
+df = pd.DataFrame(df_transactions)
+transactions = df.apply(lambda row: row.index[row == 1].tolist(), axis=1).tolist()
 
 
+
+
+###########################################################
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.count = 0
+
+def build_trie(transactions):
+    root = TrieNode()
+    for transaction in transactions:
+        current = root
+        for product in transaction:
+            if product not in current.children:
+                current.children[product] = TrieNode()
+            current = current.children[product]
+            current.count += 1
+    return root
+
+def print_trie(node, prefix=[]):
+    if node.count > 0:
+        print(prefix, "Count:", node.count)
+    for product, child in node.children.items():
+        print_trie(child, prefix + [product])
+
+
+# Budowanie drzewa Trie
+trie_root = build_trie(transactions)
+
+# Wypisanie drzewa Trie
+print_trie(trie_root)
 
 from anytree import Node, RenderTree
 
