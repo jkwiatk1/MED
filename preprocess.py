@@ -16,6 +16,7 @@ taxonomy_txt = response_taxonomy.text
 
 df_taxonomy = np.genfromtxt(io.StringIO(taxonomy_txt), delimiter=',')
 df_taxonomy = pd.DataFrame(df_taxonomy)
+df_taxonomy = df_taxonomy.astype(int)
 df_taxonomy.to_csv('taxonomy.csv', index=False)
 
 elements_data = []
