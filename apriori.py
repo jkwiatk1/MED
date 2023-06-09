@@ -1,11 +1,13 @@
 import pandas as pd
 
+IS_PRINT_ = False
+min_support = 20
+
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
+df_transaction_dataset = df_transaction_dataset.head(2000)
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
-print(item_counts)
-
 
 # Sum up the occurrences of identical combinations separately for each hierarchical level (3-digit columns)
 # Set to store unique combinations
@@ -33,9 +35,62 @@ for index, row in df_transaction_dataset.iterrows():
                     unique_combinations.add(combination_key)
                     combination_counts[combination_key] = 1
 
-# Print the combination counts
-for combination, count in combination_counts.items():
-    print(f"Combination: {combination}, Count: {count}")
+if IS_PRINT_ == True:
+    # Print the items counts
+    print(item_counts)
+    # Print the hierarchy combination counts
+    for combination, count in combination_counts.items():
+        print(f"Combination: {combination}, Count: {count}")
+
+# Function to generate candidate itemsets of length k
+def generate_candidates(prev_itemsets, k):
+    candidates = set()
+    for itemset1 in prev_itemsets:
+        for itemset2 in prev_itemsets:
+            if len(itemset1.union(itemset2)) == k:
+                candidates.add(itemset1.union(itemset2))
+    return candidates
+
+# Function to prune infrequent itemsets
+def prune_itemsets(itemsets, min_support):
+    pruned_itemsets = {}
+    for itemset in itemsets:
+        support = sum(1 for _, row in df_transaction_dataset.iterrows() if all(row[item] != 0 for item in itemset))
+        if support >= min_support:
+            pruned_itemsets[itemset] = support
+    return pruned_itemsets
+
+
+
+# Frequent itemsets dictionary
+frequent_itemsets = {}
+
+# Initialize frequent 1-itemsets
+frequent_1_itemsets = {}
+for item, count in item_counts.items():
+    if count >= min_support:
+        frequent_1_itemsets[frozenset([item])] = count
+
+frequent_itemsets[1] = frequent_1_itemsets
+
+# Generate frequent k-itemsets
+k = 2
+while frequent_itemsets[k - 1]:
+    # Generate candidate itemsets
+    candidate_itemsets = generate_candidates(frequent_itemsets[k - 1].keys(), k)
+
+    # Prune infrequent itemsets
+    frequent_itemsets[k] = prune_itemsets(candidate_itemsets, min_support)
+
+    k += 1
+
+# Print frequent k-itemsets
+for k, itemsets in frequent_itemsets.items():
+    print(f"Frequent {k}-itemsets:")
+    for itemset, support in itemsets.items():
+        print(f"Itemset: {itemset}, Support: {support}")
+
+
 
 
 '''
@@ -53,6 +108,7 @@ while True:
         break
     frequent_itemsets.extend(frequent_candidates)
     k += 1
+
 
 # Step 4: Generate Association Rules
 # Assuming you have defined the minimum confidence threshold as 'min_confidence'
