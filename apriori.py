@@ -1,25 +1,6 @@
 import pandas as pd
 
-'''
-from mlxtend.frequent_patterns import apriori, association_rules
-transaction = pd.read_csv('transactions.csv')
-
-# Apply the Apriori algorithm
-frequent_itemsets = apriori(transaction, min_support=0.01, use_colnames=True)
-
-# Generate association rules
-association_rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.4)
-
-# Print the frequent itemsets and association rules
-print("Frequent Itemsets:")
-print(frequent_itemsets)
-
-print("\nAssociation Rules:")
-print(association_rules)
-'''
-
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
-
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
@@ -55,3 +36,49 @@ for index, row in df_transaction_dataset.iterrows():
 # Print the combination counts
 for combination, count in combination_counts.items():
     print(f"Combination: {combination}, Count: {count}")
+
+
+'''
+# Step 3: Generate Frequent k-itemsets
+# Assuming you have defined the minimum support threshold as 'min_support'
+frequent_itemsets = []
+k = 1
+while True:
+    candidate_itemsets = list(combinations(item_counts.index, k))
+    frequent_candidates = []
+    for itemset in candidate_itemsets:
+        if all(item_counts[item] >= min_support for item in itemset):
+            frequent_candidates.append(itemset)
+    if not frequent_candidates:
+        break
+    frequent_itemsets.extend(frequent_candidates)
+    k += 1
+
+# Step 4: Generate Association Rules
+# Assuming you have defined the minimum confidence threshold as 'min_confidence'
+association_rules = []
+for itemset in frequent_itemsets:
+    if len(itemset) > 1:
+        subsets = list(combinations(itemset, len(itemset) - 1))
+        for subset in subsets:
+            antecedent_support = item_counts[list(subset)].min()
+            consequent_support = item_counts[itemset].min()
+            confidence = consequent_support / antecedent_support
+            if confidence >= min_confidence:
+                rule = (list(subset), list(set(itemset) - set(subset)), confidence)
+                association_rules.append(rule)
+
+# Print the frequent itemsets and association rules
+print("Frequent Itemsets:")
+for itemset in frequent_itemsets:
+    print(itemset)
+
+print("\nAssociation Rules:")
+for rule in association_rules:
+    print(f"Antecedent: {rule[0]}, Consequent: {rule[1]}, Confidence: {rule[2]}")
+'''
+
+
+
+
+
