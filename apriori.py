@@ -1,12 +1,12 @@
 import pandas as pd
 
 IS_PRINT_ = False
-min_support = 50
+min_support = 30
 
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
 
 # ONLY FOR TESTING
-df_transaction_dataset = df_transaction_dataset.head(1000)
+df_transaction_dataset = df_transaction_dataset.head(2000)
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
@@ -69,13 +69,34 @@ def generate_candidates(prev_itemsets, k):
                 candidates.add(itemset1.union(itemset2))
     return candidates
 
+
+
 # Function to prune infrequent itemsets
 def prune_itemsets(itemsets, min_support):
     pruned_itemsets = {}
     for itemset in itemsets:
-        support = sum(1 for _, row in df_transaction_dataset.iterrows() if all(row.get(str(item), 0) != 0 for item in itemset))
-        if support >= min_support:
-            pruned_itemsets[itemset] = support
+        support = 0
+        # support = {}
+        # for item in itemset:
+        #     support[item] = 0
+        for _, row in df_transaction_dataset.iterrows():
+            is_frequent = True
+            for item in itemset:
+                if isinstance(item, tuple):
+                    if item[0] in row and row[item[0]] <= item[1]:
+                        is_frequent = False
+                        break
+                else:
+                    if item not in row or row[item] == 0:
+                        is_frequent = False
+                        break
+            # if is_frequent:
+            #     for item in itemset:
+            #         support[item] += 1
+            if is_frequent:
+                support += 1
+        # if all(support[item] >= min_support for item in itemset):
+        #     pruned_itemsets[itemset] = support
     return pruned_itemsets
 
 # Frequent itemsets dictionary
