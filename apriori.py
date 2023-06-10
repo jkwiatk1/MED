@@ -1,10 +1,12 @@
 import pandas as pd
 
 IS_PRINT_ = False
-min_support = 20
+min_support = 50
 
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
-df_transaction_dataset = df_transaction_dataset.head(2000)
+
+# ONLY FOR TESTING
+df_transaction_dataset = df_transaction_dataset.head(1000)
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
@@ -35,12 +37,28 @@ for index, row in df_transaction_dataset.iterrows():
                     unique_combinations.add(combination_key)
                     combination_counts[combination_key] = 1
 
+
 if IS_PRINT_ == True:
     # Print the items counts
     print(item_counts)
     # Print the hierarchy combination counts
     for combination, count in combination_counts.items():
         print(f"Combination: {combination}, Count: {count}")
+
+
+# Merge occuracy from each individual item with combinations for each hierarchical level
+combination_counts_series = pd.Series(combination_counts)
+transations_taxonomy_elements_frequency = pd.concat([item_counts, combination_counts_series])
+# # Convert the merged Series to a DataFrame
+# merged_df = pd.DataFrame({'Count': transations_taxonomy_elements_frequency})
+#
+# # Reset index of the merged DataFrame to make the columns accessible
+# merged_df.reset_index(inplace=True)
+# merged_df.rename(columns={'index': 'Item'}, inplace=True)
+
+if IS_PRINT_ == True:
+    print(transations_taxonomy_elements_frequency)
+
 
 # Function to generate candidate itemsets of length k
 def generate_candidates(prev_itemsets, k):
@@ -55,19 +73,17 @@ def generate_candidates(prev_itemsets, k):
 def prune_itemsets(itemsets, min_support):
     pruned_itemsets = {}
     for itemset in itemsets:
-        support = sum(1 for _, row in df_transaction_dataset.iterrows() if all(row[item] != 0 for item in itemset))
+        support = sum(1 for _, row in df_transaction_dataset.iterrows() if all(row.get(str(item), 0) != 0 for item in itemset))
         if support >= min_support:
             pruned_itemsets[itemset] = support
     return pruned_itemsets
-
-
 
 # Frequent itemsets dictionary
 frequent_itemsets = {}
 
 # Initialize frequent 1-itemsets
 frequent_1_itemsets = {}
-for item, count in item_counts.items():
+for item, count in transations_taxonomy_elements_frequency.items():
     if count >= min_support:
         frequent_1_itemsets[frozenset([item])] = count
 
