@@ -80,31 +80,10 @@ def generate_candidates(prev_itemsets, k):
 
 
 # Function to prune infrequent itemsets
-'''
-def prune_itemsets(itemsets, min_support):
+def prune_itemsets(itemsets, min_support, rejected_itemsets):
     pruned_itemsets = {}
-    for itemset in itemsets:
-        support = 0
-        for _, row in df_transaction_dataset.iterrows():
-            is_frequent = True
-            for item in itemset:
-                if isinstance(item, tuple):
-                    if item[0] in row and row[item[0]] == item[1]:
-                        is_frequent = False
-                        break
-                else:
-                    if item not in row or row[item] == 0:
-                        is_frequent = False
-                        break
-            if is_frequent:
-                support += 1
-        if support >= min_support:
-            pruned_itemsets[itemset] = support
-    return pruned_itemsets
-'''
-def prune_itemsets(itemsets, min_support):
-    pruned_itemsets = {}
-    for itemset in itemsets:
+    filtered_itemsets = set(itemset for itemset in itemsets if itemset not in rejected_itemsets)
+    for itemset in filtered_itemsets:
         support = sum(
             all(
                 (item[0] in row and row[item[0]] == item[1])
@@ -116,18 +95,27 @@ def prune_itemsets(itemsets, min_support):
         )
         if support >= min_support:
             pruned_itemsets[itemset] = support
+        else:
+            rejected_itemsets.append(itemset)
     return pruned_itemsets
 
-
-
+########################################
+# Step 3: Generate Frequent k-itemsets
+########################################
 # Frequent itemsets dictionary
 frequent_itemsets = {}
 
 # Initialize frequent 1-itemsets
 frequent_1_itemsets = {}
+
+# List to store rejected itemsets
+rejected_itemsets = []
+
 for item, count in transations_taxonomy_elements_frequency.items():
     if count >= min_support:
         frequent_1_itemsets[frozenset([item])] = count
+    else:
+        rejected_itemsets.append(item)
 
 frequent_itemsets[1] = frequent_1_itemsets
 
@@ -138,7 +126,7 @@ while frequent_itemsets[k - 1]:
     candidate_itemsets = generate_candidates(frequent_itemsets[k - 1].keys(), k)
 
     # Prune infrequent itemsets
-    frequent_itemsets[k] = prune_itemsets(candidate_itemsets, min_support)
+    frequent_itemsets[k] = prune_itemsets(candidate_itemsets, min_support, rejected_itemsets)
 
     k += 1
 
@@ -152,22 +140,6 @@ for k, itemsets in frequent_itemsets.items():
 
 
 '''
-# Step 3: Generate Frequent k-itemsets
-# Assuming you have defined the minimum support threshold as 'min_support'
-frequent_itemsets = []
-k = 1
-while True:
-    candidate_itemsets = list(combinations(item_counts.index, k))
-    frequent_candidates = []
-    for itemset in candidate_itemsets:
-        if all(item_counts[item] >= min_support for item in itemset):
-            frequent_candidates.append(itemset)
-    if not frequent_candidates:
-        break
-    frequent_itemsets.extend(frequent_candidates)
-    k += 1
-
-
 # Step 4: Generate Association Rules
 # Assuming you have defined the minimum confidence threshold as 'min_confidence'
 association_rules = []
