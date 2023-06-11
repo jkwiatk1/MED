@@ -96,7 +96,7 @@ def prune_itemsets(itemsets, min_support, rejected_itemsets):
         if support >= min_support:
             pruned_itemsets[itemset] = support
         else:
-            rejected_itemsets.append(itemset)
+            rejected_itemsets.add(itemset)
     return pruned_itemsets
 
 ########################################
@@ -108,16 +108,17 @@ frequent_itemsets = {}
 # Initialize frequent 1-itemsets
 frequent_1_itemsets = {}
 
-# List to store rejected itemsets
-rejected_itemsets = []
+# Set to store rejected itemsets
+rejected_itemsets = set()
 
 for item, count in transations_taxonomy_elements_frequency.items():
     if count >= min_support:
         frequent_1_itemsets[frozenset([item])] = count
     else:
-        rejected_itemsets.append(item)
+        rejected_itemsets.add(frozenset([item]))
 
 frequent_itemsets[1] = frequent_1_itemsets
+
 
 # Generate frequent k-itemsets
 k = 2
