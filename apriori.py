@@ -6,7 +6,7 @@ min_support = 30
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
 
 # ONLY FOR TESTING
-df_transaction_dataset = df_transaction_dataset.head(2000)
+df_transaction_dataset = df_transaction_dataset.head(1000)
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
@@ -46,6 +46,7 @@ if IS_PRINT_ == True:
         print(f"Combination: {combination}, Count: {count}")
 
 
+
 # Merge occuracy from each individual item with combinations for each hierarchical level
 combination_counts_series = pd.Series(combination_counts)
 transations_taxonomy_elements_frequency = pd.concat([item_counts, combination_counts_series])
@@ -60,7 +61,14 @@ if IS_PRINT_ == True:
     print(transations_taxonomy_elements_frequency)
 
 
+
 # Function to generate candidate itemsets of length k
+'''
+mozna zamiast dwoch petli uzyc 
+import itertools
+for combination in itertools.combinations(prev_itemsets, 2):
+    candidates2.add(frozenset(combination))
+'''
 def generate_candidates(prev_itemsets, k):
     candidates = set()
     for itemset1 in prev_itemsets:
@@ -72,32 +80,45 @@ def generate_candidates(prev_itemsets, k):
 
 
 # Function to prune infrequent itemsets
+'''
 def prune_itemsets(itemsets, min_support):
     pruned_itemsets = {}
     for itemset in itemsets:
         support = 0
-        # support = {}
-        # for item in itemset:
-        #     support[item] = 0
         for _, row in df_transaction_dataset.iterrows():
             is_frequent = True
             for item in itemset:
                 if isinstance(item, tuple):
-                    if item[0] in row and row[item[0]] <= item[1]:
+                    if item[0] in row and row[item[0]] == item[1]:
                         is_frequent = False
                         break
                 else:
                     if item not in row or row[item] == 0:
                         is_frequent = False
                         break
-            # if is_frequent:
-            #     for item in itemset:
-            #         support[item] += 1
             if is_frequent:
                 support += 1
-        # if all(support[item] >= min_support for item in itemset):
-        #     pruned_itemsets[itemset] = support
+        if support >= min_support:
+            pruned_itemsets[itemset] = support
     return pruned_itemsets
+'''
+def prune_itemsets(itemsets, min_support):
+    pruned_itemsets = {}
+    for itemset in itemsets:
+        support = sum(
+            all(
+                (item[0] in row and row[item[0]] == item[1])
+                if isinstance(item, tuple)
+                else (item in row and row[item] != 0)
+                for item in itemset
+            )
+            for _, row in df_transaction_dataset.iterrows()
+        )
+        if support >= min_support:
+            pruned_itemsets[itemset] = support
+    return pruned_itemsets
+
+
 
 # Frequent itemsets dictionary
 frequent_itemsets = {}
