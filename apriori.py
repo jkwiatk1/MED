@@ -1,4 +1,5 @@
 import pandas as pd
+import itertools
 
 IS_PRINT_ = False
 min_support = 120
@@ -87,7 +88,7 @@ def prune_itemsets(itemsets, min_support, rejected_itemsets):
     for itemset in itemsets:
         support = sum(
             all(
-                (item[0] in row and row[item[0]] == item[1])    # moze cos takiego row[item[0]] > item[1] tylko to na pewno nie bedzie dzialalo dobrze bo zwroci mi wszystkie wiersze ktore maja wiecej niz row[item0]
+                (item[0] in row and row[item[0]] == item[1])
                 if isinstance(item, tuple)
                 else (item in row and row[item] != 0)
                 for item in itemset
@@ -146,47 +147,57 @@ for k, itemsets in frequent_itemsets.items():
 # Function to generate association rules from frequent itemsets
 def generate_association_rules(frequent_itemsets_to_create_rules, min_confidence):
     association_rules = []
-    for itemset in frequent_itemsets_to_create_rules.items():
-        support = itemset[1]
-        itemset = itemset[0]
 
+    for itemset in frequent_itemsets_to_create_rules.items():
+        support_without_tuple = itemset[1]
+        itemset = itemset[0]
+        new_itemset = True
+        last_support_for_tuple = None
         subsets = get_subsets(itemset)
 
         for subset in subsets:
             antecedent = subset
             consequent = itemset - subset
+            if len(antecedent) >= 2 or isinstance(antecedent,tuple) or any(isinstance(x,tuple) for x in consequent):
+                    antecedent_support = sum(
+                        all(
+                            (row[item[0]] > item[1])
+                            if isinstance(item, tuple)
+                            else (row[item] == 1)
+                            for item in antecedent
+                        )
+                    for _, row in df_transaction_dataset.iterrows()
+                    )
 
-            antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
-            confidence = support / antecedent_support
+                    if new_itemset == True:
+                        new_itemset = False
+                        base_support = sum(
+                            all(
+                                (row[item[0]] > item[1])
+                                if isinstance(item, tuple)
+                                else (row[item] == 1)
+                                for item in itemset
+                            )
+                            for _, row in df_transaction_dataset.iterrows()
+                        )
 
-            if confidence >= min_confidence:
-                association_rules.append((antecedent, consequent, support, confidence))
+                        last_support_for_tuple = base_support
+                    support = last_support_for_tuple
+                    if antecedent_support > 0:
+                        confidence = support / antecedent_support
+                        if confidence >= min_confidence:
+                            association_rules.append((antecedent, consequent, support, confidence))
+            else:
+                antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
+                confidence = support_without_tuple / antecedent_support
+                if confidence >= min_confidence:
+                    association_rules.append((antecedent, consequent, support_without_tuple, confidence))
 
     return association_rules
 
-    # for k, itemsets in frequent_itemsets.items():
-    #     if k < 2:
-    #         continue
-    #
-    #     for itemset, support in itemsets.items():
-    #         if len(itemset) < 2:
-    #             continue
-    #
-    #         subsets = get_subsets(itemset)
-    #
-    #         for subset in subsets:
-    #             antecedent = subset
-    #             consequent = itemset - subset
-    #
-    #             antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
-    #             confidence = support / antecedent_support
-    #
-    #             if confidence >= min_confidence:
-    #                 association_rules.append((antecedent, consequent, support, confidence))
-    #
-    # return association_rules
 
-import itertools
+
+
 # Function to get all possible subsets of an itemset
 def get_subsets(itemset):
     subsets = []
@@ -200,9 +211,9 @@ def get_subsets(itemset):
 
 
 # Set the minimum confidence threshold for association rules
-min_confidence = 0.5
+min_confidence = 0.3
 
-# Generate association rules from frequent itemsets
+# Generate association rules from frequent itemsets: [k-2] - last;  [k-3] - one before last
 association_rules = generate_association_rules(frequent_itemsets[k-2], min_confidence)
 
 # Print the generated association rules
