@@ -82,11 +82,13 @@ def generate_candidates(prev_itemsets, k):
 # Function to prune infrequent itemsets
 def prune_itemsets(itemsets, min_support, rejected_itemsets):
     pruned_itemsets = {}
-    filtered_itemsets = set(itemset for itemset in itemsets if itemset not in rejected_itemsets)
-    for itemset in filtered_itemsets:
+    if rejected_itemsets:
+        itemsets = set(itemset for itemset in itemsets if itemset not in rejected_itemsets)
+    x= True
+    for itemset in itemsets:
         support = sum(
             all(
-                (item[0] in row and row[item[0]] == item[1])
+                (item[0] in row and row[item[0]] == item[1])    # moze cos takiego row[item[0]] > item[1] tylko to na pewno nie bedzie dzialalo dobrze bo zwroci mi wszystkie wiersze ktore maja wiecej niz row[item0]
                 if isinstance(item, tuple)
                 else (item in row and row[item] != 0)
                 for item in itemset
@@ -114,8 +116,6 @@ rejected_itemsets = set()
 for item, count in transations_taxonomy_elements_frequency.items():
     if count >= min_support:
         frequent_1_itemsets[frozenset([item])] = count
-    else:
-        rejected_itemsets.add(frozenset([item]))
 
 frequent_itemsets[1] = frequent_1_itemsets
 
@@ -131,39 +131,69 @@ while frequent_itemsets[k - 1]:
 
     k += 1
 
+'''
 # Print frequent k-itemsets
 for k, itemsets in frequent_itemsets.items():
     print(f"Frequent {k}-itemsets:")
     for itemset, support in itemsets.items():
         print(f"Itemset: {itemset}, Support: {support}")
-
-
-
-
 '''
+
+
+
+########################################
 # Step 4: Generate Association Rules
-# Assuming you have defined the minimum confidence threshold as 'min_confidence'
-association_rules = []
-for itemset in frequent_itemsets:
-    if len(itemset) > 1:
-        subsets = list(combinations(itemset, len(itemset) - 1))
-        for subset in subsets:
-            antecedent_support = item_counts[list(subset)].min()
-            consequent_support = item_counts[itemset].min()
-            confidence = consequent_support / antecedent_support
-            if confidence >= min_confidence:
-                rule = (list(subset), list(set(itemset) - set(subset)), confidence)
-                association_rules.append(rule)
+########################################
+# Function to generate association rules from frequent itemsets
+def generate_association_rules(frequent_itemsets, min_confidence):
+    association_rules = []
 
-# Print the frequent itemsets and association rules
-print("Frequent Itemsets:")
-for itemset in frequent_itemsets:
-    print(itemset)
+    for k, itemsets in frequent_itemsets.items():
+        if k < 2:
+            continue
 
-print("\nAssociation Rules:")
-for rule in association_rules:
-    print(f"Antecedent: {rule[0]}, Consequent: {rule[1]}, Confidence: {rule[2]}")
-'''
+        for itemset, support in itemsets.items():
+            if len(itemset) < 2:
+                continue
+
+            subsets = get_subsets(itemset)
+
+            for subset in subsets:
+                antecedent = subset
+                consequent = itemset - subset
+
+                antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
+                confidence = support / antecedent_support
+
+                if confidence >= min_confidence:
+                    association_rules.append((antecedent, consequent, support, confidence))
+
+    return association_rules
+
+import itertools
+# Function to get all possible subsets of an itemset
+def get_subsets(itemset):
+    subsets = []
+    itemset = list(itemset)
+    num_items = len(itemset)
+
+    for i in range(1, num_items):
+        subsets.extend(itertools.combinations(itemset, i))
+
+    return [frozenset(subset) for subset in subsets]
+
+
+# Set the minimum confidence threshold for association rules
+min_confidence = 0.5
+
+# Generate association rules from frequent itemsets
+association_rules = generate_association_rules(frequent_itemsets, min_confidence)
+
+# Print the generated association rules
+print("Association Rules:")
+for antecedent, consequent, support, confidence in association_rules:
+    print(f"Antecedent: {antecedent}, Consequent: {consequent}, Support: {support}, Confidence: {confidence}")
+
 
 
 
