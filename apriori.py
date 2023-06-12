@@ -1,12 +1,12 @@
 import pandas as pd
 
 IS_PRINT_ = False
-min_support = 30
+min_support = 120
 
 df_transaction_dataset = pd.read_csv('transactions_with_parents.csv')
 
 # ONLY FOR TESTING
-df_transaction_dataset = df_transaction_dataset.head(1000)
+df_transaction_dataset = df_transaction_dataset.head(3000)
 
 # Count the occurrences of each individual item (4-digit columns)
 item_counts = df_transaction_dataset[[col for col in df_transaction_dataset.columns if col.isdigit() and len(col) == 4]].sum()
@@ -84,7 +84,6 @@ def prune_itemsets(itemsets, min_support, rejected_itemsets):
     pruned_itemsets = {}
     if rejected_itemsets:
         itemsets = set(itemset for itemset in itemsets if itemset not in rejected_itemsets)
-    x= True
     for itemset in itemsets:
         support = sum(
             all(
@@ -145,30 +144,47 @@ for k, itemsets in frequent_itemsets.items():
 # Step 4: Generate Association Rules
 ########################################
 # Function to generate association rules from frequent itemsets
-def generate_association_rules(frequent_itemsets, min_confidence):
+def generate_association_rules(frequent_itemsets_to_create_rules, min_confidence):
     association_rules = []
+    for itemset in frequent_itemsets_to_create_rules.items():
+        support = itemset[1]
+        itemset = itemset[0]
 
-    for k, itemsets in frequent_itemsets.items():
-        if k < 2:
-            continue
+        subsets = get_subsets(itemset)
 
-        for itemset, support in itemsets.items():
-            if len(itemset) < 2:
-                continue
+        for subset in subsets:
+            antecedent = subset
+            consequent = itemset - subset
 
-            subsets = get_subsets(itemset)
+            antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
+            confidence = support / antecedent_support
 
-            for subset in subsets:
-                antecedent = subset
-                consequent = itemset - subset
-
-                antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
-                confidence = support / antecedent_support
-
-                if confidence >= min_confidence:
-                    association_rules.append((antecedent, consequent, support, confidence))
+            if confidence >= min_confidence:
+                association_rules.append((antecedent, consequent, support, confidence))
 
     return association_rules
+
+    # for k, itemsets in frequent_itemsets.items():
+    #     if k < 2:
+    #         continue
+    #
+    #     for itemset, support in itemsets.items():
+    #         if len(itemset) < 2:
+    #             continue
+    #
+    #         subsets = get_subsets(itemset)
+    #
+    #         for subset in subsets:
+    #             antecedent = subset
+    #             consequent = itemset - subset
+    #
+    #             antecedent_support = frequent_itemsets[len(antecedent)][antecedent]
+    #             confidence = support / antecedent_support
+    #
+    #             if confidence >= min_confidence:
+    #                 association_rules.append((antecedent, consequent, support, confidence))
+    #
+    # return association_rules
 
 import itertools
 # Function to get all possible subsets of an itemset
@@ -187,12 +203,15 @@ def get_subsets(itemset):
 min_confidence = 0.5
 
 # Generate association rules from frequent itemsets
-association_rules = generate_association_rules(frequent_itemsets, min_confidence)
+association_rules = generate_association_rules(frequent_itemsets[k-2], min_confidence)
 
 # Print the generated association rules
 print("Association Rules:")
 for antecedent, consequent, support, confidence in association_rules:
-    print(f"Antecedent: {antecedent}, Consequent: {consequent}, Support: {support}, Confidence: {confidence}")
+    # print(f"Antecedent: {antecedent}, Consequent: {consequent}, Support: {support}, Confidence: {confidence}")
+    antecedent_str = ', '.join([str(item) for item in antecedent])
+    consequent_str = ', '.join([str(item) for item in consequent])
+    print(f"Antecedent: {antecedent_str}, Consequent: {consequent_str}, Support: {support}, Confidence: {confidence}")
 
 
 
