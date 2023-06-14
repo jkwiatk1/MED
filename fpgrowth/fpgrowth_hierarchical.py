@@ -39,42 +39,42 @@ def getFromFile(fname):
 
 
 def constructTree(transactions_list,frequency, minSup):
-    headerTable = defaultdict(int)
+    sorted_items = defaultdict(int)
 
-    # Counting frequency and create header table
+
     for idx, itemSet in enumerate(transactions_list):
 
         for item in itemSet:
-            headerTable[item] += frequency[idx]
+            sorted_items[item] += frequency[idx]
 
     # Deleting items below minSup
-    headerTable = dict((item, sup) for item, sup in headerTable.items() if sup >= minSup)
-    if (len(headerTable) == 0):
+    sorted_items = dict((item, sup) for item, sup in sorted_items.items() if sup >= minSup)
+    if (len(sorted_items) == 0):
         return None, None
 
-    # HeaderTable column [Item: [frequency, headNode]]
-    for item in headerTable:
-        headerTable[item] = [headerTable[item], None]
+
+    for item in sorted_items:
+        sorted_items[item] = [sorted_items[item], None]
 
     # Init Null head node
     fpTree = Node('Null', 1, None)
     # Update FP tree for each cleaned and sorted itemSet
     for idx, itemSet in tqdm(enumerate(transactions_list)):
-        itemSet = [item for item in itemSet if item in headerTable]
-        itemSet.sort(key=lambda item: headerTable[item][0], reverse=True)
+        itemSet = [item for item in itemSet if item in sorted_items]
+        itemSet.sort(key=lambda item: sorted_items[item][0], reverse=True)
         # Traverse from root to leaf, update tree with given item
         currentNode = fpTree
         for item in itemSet:
-            currentNode = updateTree(item, currentNode, headerTable, frequency[idx])
+            currentNode = updateTree(item, currentNode, sorted_items, frequency[idx])
 
-    return fpTree, headerTable
+    return fpTree, sorted_items
 
 
-def updateHeaderTable(item, targetNode, headerTable):
-    if (headerTable[item][1] == None):
-        headerTable[item][1] = targetNode
+def updateSortedTable(item, targetNode, sortedTable):
+    if (sortedTable[item][1] == None):
+        sortedTable[item][1] = targetNode
     else:
-        currentNode = headerTable[item][1]
+        currentNode = sortedTable[item][1]
         # Traverse to the last node then link it to the target
         while currentNode.next != None:
             currentNode = currentNode.next
@@ -90,7 +90,7 @@ def updateTree(item, treeNode, headerTable, frequency):
         newItemNode = Node(item, frequency, treeNode)
         treeNode.children[item] = newItemNode
         # Link the new branch to header table
-        updateHeaderTable(item, newItemNode, headerTable)
+        updateSortedTable(item, newItemNode, headerTable)
 
     return treeNode.children[item]
 
@@ -213,13 +213,13 @@ def fpgrowth(transactions, minSup, minConf):
     frequency = getFrequency(transactions)
 
 
-    fpTree, headerTable = constructTree(transactions,  frequency, minSup)
+    fpTree, sorted_items = constructTree(transactions,  frequency, minSup)
     if(fpTree == None):
         print('No frequent item set')
     else:
         freqItems = []
         print('traversing trough tree')
-        traverse_from_childs(headerTable, minSup, set(), freqItems)
+        traverse_from_childs(sorted_items, minSup, set(), freqItems)
         print('discovering rules')
         freq_items_more1 = remove_single_element_lists(freqItems)
         rules = associationRule(freq_items_more1, transactions, minConf)
@@ -262,31 +262,23 @@ def prepare(path):
 
     parent_t = raw_t.loc[0, str(parent)]
 
-
-
     # Example usage:
     transactions_df = pd.read_csv(path, header=0)
     columns = transactions_df.columns
     column_map = {index: column for index, column in enumerate(columns)}
-    print(column_map)
     t_array = transactions_df.values
     transactions_list = [np.nonzero(row)[0].tolist() for row in t_array]
     transactions_list = map_transaction_list(transactions_list, column_map)
     return transactions_list, column_map
 
 
-transactions_list, column_map  = prepare('../dataset/t_200.csv')
-
-freq_itms, rules = fpgrowth(transactions=transactions_list,minSup = 5,minConf = 0.3)
-
-print(rules)
-print(len(rules))
+transaction_list, _ = prepare('../dataset/t_500.csv')
+freq_itms, rules = fpgrowth(transactions=transaction_list,minSup = 5,minConf = 0.3)
 
 
-# print('Frequent Items:')
-# print(freqItemSet)
-#
-# print('Rules')
-# print(rules)
+
+
+
+
 
 
