@@ -8,15 +8,15 @@ from tqdm import tqdm
 
 
 class Node:
-    def __init__(self, itemName, frequency, parentNode):
+    def __init__(self, itemName, count, parent):
+        self.parent = parent
         self.itemName = itemName
-        self.count = frequency
-        self.parent = parentNode
+        self.count = count
         self.children = {}
         self.next = None
 
-    def increment(self, frequency):
-        self.count += frequency
+    def increment(self, v):
+        self.count += v
 
     def display(self, ind=1):
         print('  ' * ind, self.itemName, ' ', self.count)
@@ -121,9 +121,11 @@ def findPrefixPath(item, headerTable):
 
 
 def traverse_from_childs(headerTable, minSup, _frequentSet, freqItemList):
-    # Sort the items with frequency and create a list
-    sortedItemList = [item[0] for item in sorted(list(headerTable.items()), key=lambda p: p[1][0])]
-    # Start with the lowest frequency
+
+    sorted_items = sorted(list(headerTable.items()), key=lambda p: p[1][0])
+    sortedItemList = [item[0] for item in sorted_items]
+
+
     for item in sortedItemList:
         # Pattern growth is achieved by the concatenation of suffix pattern with frequent patterns generated from conditional FP-tree
         newFreqSet = _frequentSet.copy()
@@ -153,12 +155,31 @@ def powerset(items):
 
     return all_subsets
 
-
-def getSupport(testSet, itemSetList):
+def getSupport(freq_set, transactions_all, transactions_extended, child_parent, dict_levels, childs):
     count = 0
-    for itemSet in itemSetList:
-        if (set(testSet).issubset(itemSet)):
+
+    for idx, t2 in enumerate(transactions_all):
+        t2 = set(t2)
+
+        if not freq_set.issubset(t2):
+            continue
+
+        parents = []
+        for freq_element in freq_set:
+            if int(freq_element) in dict_levels[2] or int(freq_element) in dict_levels[1]:
+                parents.append(int(freq_element))
+
+        all_parents_supports = True
+        for p in parents:
+            num_childs_in_transaction = transactions_extended.loc[idx, str(p)]
+            num_childs_in_freq_set = len(set(childs[str(p)]) & freq_set)
+
+            if num_childs_in_transaction  <= num_childs_in_freq_set:
+                all_parents_supports = False
+                break
+        if all_parents_supports:
             count += 1
+
     return count
 
 def set_difference(set1, set2):
@@ -166,14 +187,19 @@ def set_difference(set1, set2):
     np_set2 = np.array(list(set2))
     result = np.setdiff1d(np_set1, np_set2)
     return set(result)
-def associationRule(freqItemSet, itemSetList, minConf):
+def associationRule(freqItemSet, itemSetList, minConf, rawt, child_parent, dict_levels, childs):
     rules = []
     start_time = time.time_ns()  # Mierzenie czasu rozpoczęcia funkcji
     for itemSet in tqdm(freqItemSet):
         subsets = list(powerset(itemSet))
-        itemSetSup = getSupport(itemSet, itemSetList)
+        itemSetSup = getSupport(itemSet, itemSetList, rawt, child_parent, dict_levels, childs)
+
         for s in subsets:
-            next_support = getSupport(s, itemSetList)
+
+            if len(s) == 0 or len(s) == len(itemSet):
+                continue
+
+            next_support = getSupport(s, itemSetList, rawt, child_parent, dict_levels, childs)
             if next_support != 0:
                 confidence = float(itemSetSup / next_support)
             else:
@@ -184,9 +210,6 @@ def associationRule(freqItemSet, itemSetList, minConf):
     elapsed_time = end_time - start_time  # Obliczanie czasu wykonania funkcji
 
     return rules
-
-
-
 
 def getFrequency(transactions):
     frequency = np.ones(len(transactions)).tolist()
@@ -209,9 +232,11 @@ def map_transaction_list(l, column_map):
         rlist.append(newlist)
     return rlist
 
-def fpgrowth(transactions, minSup, minConf):
-    frequency = getFrequency(transactions)
 
+
+
+def fpgrowth(transactions, minSup, minConf, rawt, child_parent, dict_levels, childs):
+    frequency = getFrequency(transactions)
 
     fpTree, sorted_items = constructTree(transactions,  frequency, minSup)
     if(fpTree == None):
@@ -222,13 +247,13 @@ def fpgrowth(transactions, minSup, minConf):
         traverse_from_childs(sorted_items, minSup, set(), freqItems)
         print('discovering rules')
         freq_items_more1 = remove_single_element_lists(freqItems)
-        rules = associationRule(freq_items_more1, transactions, minConf)
+        rules = associationRule(freq_items_more1, transactions, minConf, rawt, child_parent, dict_levels, childs)
         return freq_items_more1, rules
 
 
 
 
-def get_leaf_nodes(dataframe):
+def get_levels_dict(dataframe):
     # Utworzenie zbioru zawierającego wszystkie rodzice
     parents = set(dataframe['Ancestors'].str.split(',').sum())
 
@@ -240,42 +265,61 @@ def get_leaf_nodes(dataframe):
     for _, row in leaf_nodes.iterrows():
         ancestors_count = len(row['Ancestors'].split(','))
         if ancestors_count not in leaf_nodes_dict:
-            leaf_nodes_dict[ancestors_count] = []
-        leaf_nodes_dict[ancestors_count].append(row['Elements'])
+            leaf_nodes_dict[ancestors_count] = set()
+        set_childs = leaf_nodes_dict[ancestors_count]
+        set_childs.add((row['Elements']))
 
     return leaf_nodes_dict
 
-def get_parent_for_id(id, dataframe):
-    for idx, row in dataframe.iterrows():
-        splt = row['Ancestors'].split(',')
-        print(row['Elements'])
-        if id == row['Elements']:
-            return int(splt[0])
-    return 0
+
+
+def get_childs(df):
+
+    taxonomy_dict = {}
+    for _, row in df.iterrows():
+        parent = str(row[0])
+        child = str(row[1])
+
+        if parent not in taxonomy_dict:
+            taxonomy_dict[parent] = []
+
+        taxonomy_dict[parent].append(child)
+    return taxonomy_dict
+
+
+
+
 
 def prepare(path):
     taxonomy_dict = pd.read_csv('../dataset/taxonomy_dictionary.csv', header=0)
-    leaf_nodes = get_leaf_nodes(taxonomy_dict)
+    dict_levels = get_levels_dict(taxonomy_dict)
 
-    parent = get_parent_for_id(1001, taxonomy_dict)
+    child_parent = pd.read_csv('../dataset/taxonomy.csv', header=0)
+
+    childs = get_childs(child_parent)
+
     raw_t = pd.read_csv(path, header=0)
-
-    parent_t = raw_t.loc[0, str(parent)]
 
     # Example usage:
     transactions_df = pd.read_csv(path, header=0)
     columns = transactions_df.columns
     column_map = {index: column for index, column in enumerate(columns)}
+
     t_array = transactions_df.values
     transactions_list = [np.nonzero(row)[0].tolist() for row in t_array]
     transactions_list = map_transaction_list(transactions_list, column_map)
-    return transactions_list, column_map
+    return transactions_list, column_map, raw_t, child_parent, dict_levels, childs
 
+taxonomy_dict = pd.read_csv('../dataset/taxonomy_dictionary.csv', header=0)
+leaf_nodes = get_levels_dict(taxonomy_dict)
 
-transaction_list, _ = prepare('../dataset/t_500.csv')
-freq_itms, rules = fpgrowth(transactions=transaction_list,minSup = 5,minConf = 0.3)
+transaction_list, _, rawt, child_parent, dict_levels, childs = prepare('../dataset/t_200.csv')
+freq_itms, rules = fpgrowth(transactions=transaction_list,minSup = 10,minConf = 0.2, rawt=rawt,child_parent=child_parent,  childs = childs, dict_levels = dict_levels )
 
-
+print("Finded freq items: ", len(freq_itms))
+print(freq_itms)
+print("Finded rules: ", len(rules))
+print(rules)
 
 
 
