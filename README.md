@@ -22,5 +22,12 @@ transakcja zawiera 36 przedmiotów, podczas gdy średnio klient kupuje 3,58 prze
 ## Założenia i implementacja 
 Dokładne założenia oraz kwestie implementacyjne zostały opisane w dokumentacji projektowej. 
 
-## Przykładowe uzyskane wyniki
+## Wyniki
 Dokładna analiza uzyskanych wyników została opisana w dokumentacji. Tutaj umieszczono tylko przykładowe.
+
+![img.png](docs/figures/exp_3k_list_02_freq_asoc.jpg)
+
+Wraz ze wzrostem procentowego poziomu min_sup ilość generowanych częstych zbiorów maleje. A co za tym idzie zmniejsza się
+również liczba generowanych silnych reguł asocjacyjnych.
+
+![img.png](docs/figures/exp_10k_01_05.png)
